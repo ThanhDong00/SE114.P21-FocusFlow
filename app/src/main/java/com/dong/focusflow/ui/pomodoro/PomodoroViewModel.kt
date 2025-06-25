@@ -25,6 +25,7 @@ class PomodoroViewModel @Inject constructor(
     private val _focusTime = MutableStateFlow(25) // Default value, will be updated by DataStore
     private val _shortBreakTime = MutableStateFlow(5) // Default value
     private val _longBreakTime = MutableStateFlow(15) // Default value
+    private val _shortBreaksBeforeLongBreak = MutableStateFlow(4)
 
     // StateFlow UI được hiển thị ra Composables
     private val _timerState = MutableStateFlow(TimerState.STOPPED)
@@ -40,6 +41,7 @@ class PomodoroViewModel @Inject constructor(
     private var sessionStartTime: LocalDateTime? = null
     private var sessionDurationMillis: Long = 0L // Actual duration of the session when started, in milliseconds
     private var isManualSkip: Boolean = false // Flag to differentiate between natural finish and manual skip/reset
+    private var completedFocusSessionCount: Int = 0
 
     init {
         // Collect settings from DataStore via UseCases
@@ -61,6 +63,11 @@ class PomodoroViewModel @Inject constructor(
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getLongBreakTime().collect { time ->
                 _longBreakTime.value = time
+            }
+        }
+        viewModelScope.launch {
+            getPomodoroSettingsUseCase.getShortBreaksBeforeLongBreak().collect { count ->
+                _shortBreaksBeforeLongBreak.value = count
             }
         }
 
@@ -100,16 +107,22 @@ class PomodoroViewModel @Inject constructor(
                 _timerState.value = TimerState.FINISHED // Indicate timer finished naturally
                 recordSession(true) // Session completed
 
+                if (_currentSessionType.value == PomodoroSessionType.FOCUS) {
+                    completedFocusSessionCount++
+                }
+
                 // Automatically switch to the next session type
                 // Tự động chuyển sang loại phiên tiếp theo
                 when (_currentSessionType.value) {
                     PomodoroSessionType.FOCUS -> {
-                        // For simplicity, always switch to SHORT_BREAK.
-                        // Advanced logic for alternating short/long breaks after N focus sessions could go here.
-                        // Để đơn giản, luôn chuyển sang NGHỈ NGẮN.
-                        // Logic nâng cao để xen kẽ nghỉ ngắn/nghỉ dài sau N phiên tập trung có thể đặt ở đây.
-                        _currentSessionType.value = PomodoroSessionType.SHORT_BREAK
-                        _remainingTime.value = _shortBreakTime.value * 60L * 1000L
+                        // Kiểm tra xem đã đến lúc nghỉ dài chưa
+                        if (completedFocusSessionCount % _shortBreaksBeforeLongBreak.value == 0) {
+                            _currentSessionType.value = PomodoroSessionType.LONG_BREAK
+                            _remainingTime.value = _longBreakTime.value * 60L * 1000L
+                        } else {
+                            _currentSessionType.value = PomodoroSessionType.SHORT_BREAK
+                            _remainingTime.value = _shortBreakTime.value * 60L * 1000L
+                        }
                     }
                     PomodoroSessionType.SHORT_BREAK -> {
                         _currentSessionType.value = PomodoroSessionType.FOCUS
@@ -134,13 +147,17 @@ class PomodoroViewModel @Inject constructor(
 
     fun resetTimer() {
         countDownTimer?.cancel()
-        // Only record if it was running/paused and not already finished
         // Chỉ ghi lại nếu nó đang chạy/tạm dừng và chưa kết thúc
         if (_timerState.value == TimerState.RUNNING || _timerState.value == TimerState.PAUSED) {
             recordSession(false) // Session not completed if reset prematurely
+
+//            if (_currentSessionType.value == PomodoroSessionType.FOCUS && completedFocusSessionCount > 0) {
+//                // Do not decrement if it was the very first focus session being reset
+//                // because completedFocusSessionCount would be 0 then.
+//                // This ensures we only "undo" a completed session's count if it was part of a cycle.
+//            }
         }
 
-        // Reset remaining time based on current session type
         // Đặt lại thời gian còn lại dựa trên loại phiên hiện tại
         _remainingTime.value = when (_currentSessionType.value) {
             PomodoroSessionType.FOCUS -> _focusTime.value * 60L * 1000L
@@ -149,15 +166,22 @@ class PomodoroViewModel @Inject constructor(
         }
         _timerState.value = TimerState.STOPPED // Set state to stopped
         isManualSkip = false // Reset skip flag
+        completedFocusSessionCount = 0 // Reset counter on full reset
+        _currentSessionType.value = PomodoroSessionType.FOCUS // Always go back to focus after full reset
     }
 
     //Bỏ qua phiên Pomodoro hiện tại và chuyển sang phiên tiếp theo.
     fun skipSession() {
         countDownTimer?.cancel()
         isManualSkip = true // Mark as manual skip
+
         // Only record if it was running/paused and not already finished
         if (_timerState.value == TimerState.RUNNING || _timerState.value == TimerState.PAUSED) {
             recordSession(false) // Session not completed if skipped
+            // If a focus session was skipped, decrement the counter
+            if (_currentSessionType.value == PomodoroSessionType.FOCUS && completedFocusSessionCount > 0) {
+                completedFocusSessionCount--
+            }
         }
 
         // Switch to the next session type
@@ -172,6 +196,7 @@ class PomodoroViewModel @Inject constructor(
                 _remainingTime.value = _focusTime.value * 60L * 1000L
             }
             PomodoroSessionType.LONG_BREAK -> {
+                completedFocusSessionCount = 0
                 _currentSessionType.value = PomodoroSessionType.FOCUS
                 _remainingTime.value = _focusTime.value * 60L * 1000L
             }
@@ -192,7 +217,6 @@ class PomodoroViewModel @Inject constructor(
             // If completed, duration is the full intended session duration.
             val actualDurationMillis = Duration.between(start, endTime).toMillis()
 
-            // Only record if the duration is significant, e.g., more than a few seconds
             // Chỉ ghi lại nếu thời lượng đáng kể, ví dụ: hơn vài giây
             if (actualDurationMillis > 5000) { // Record if session lasted more than 5 seconds
                 val session = PomodoroSession(
@@ -211,5 +235,10 @@ class PomodoroViewModel @Inject constructor(
 
     enum class TimerState {
         RUNNING, PAUSED, STOPPED, FINISHED
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        countDownTimer?.cancel()
     }
 }

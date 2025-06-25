@@ -20,10 +20,12 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
         val FOCUS_TIME_KEY = intPreferencesKey("focus_time")
         val SHORT_BREAK_TIME_KEY = intPreferencesKey("short_break_time")
         val LONG_BREAK_TIME_KEY = intPreferencesKey("long_break_time")
+        val SHORT_BREAKS_BEFORE_LONG_BREAK_KEY = intPreferencesKey("short_breaks_before_long_break")
 
         const val DEFAULT_FOCUS_TIME = 25
         const val DEFAULT_SHORT_BREAK_TIME = 5
         const val DEFAULT_LONG_BREAK_TIME = 15
+        const val DEFAULT_SHORT_BREAKS_BEFORE_LONG_BREAK = 4
     }
 
     val focusTime: Flow<Int> = context.dataStore.data
@@ -39,6 +41,11 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     val longBreakTime: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[LONG_BREAK_TIME_KEY] ?: DEFAULT_LONG_BREAK_TIME
+        }
+
+    val shortBreaksBeforeLongBreak: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[SHORT_BREAKS_BEFORE_LONG_BREAK_KEY] ?: DEFAULT_SHORT_BREAKS_BEFORE_LONG_BREAK
         }
 
     /**
@@ -71,6 +78,17 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     suspend fun saveLongBreakTime(time: Int) {
         context.dataStore.edit { preferences ->
             preferences[LONG_BREAK_TIME_KEY] = time
+        }
+    }
+
+    /**
+     * Saves the number of short breaks before a long break setting.
+     * Lưu cài đặt số lần nghỉ ngắn trước khi nghỉ dài.
+     * @param count The number of short breaks.
+     */
+    suspend fun saveShortBreaksBeforeLongBreak(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[SHORT_BREAKS_BEFORE_LONG_BREAK_KEY] = count
         }
     }
 }

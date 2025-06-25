@@ -31,18 +31,21 @@ fun SettingsScreen(
     val focusTime by viewModel.focusTime.collectAsState()
     val shortBreakTime by viewModel.shortBreakTime.collectAsState()
     val longBreakTime by viewModel.longBreakTime.collectAsState()
+    val shortBreaksBeforeLongBreak by viewModel.shortBreaksBeforeLongBreak.collectAsState()
 
     // Use mutable states for text fields to allow editing
     // Sử dụng các trạng thái có thể thay đổi cho các trường văn bản để cho phép chỉnh sửa
     var focusTimeInput by remember { mutableStateOf(focusTime.toString()) }
     var shortBreakTimeInput by remember { mutableStateOf(shortBreakTime.toString()) }
     var longBreakTimeInput by remember { mutableStateOf(longBreakTime.toString()) }
+    var shortBreaksBeforeLongBreakInput by remember { mutableStateOf(shortBreaksBeforeLongBreak.toString()) }
 
     // Update input fields when settings change from DataStore (e.g., initial load or external change)
     // Cập nhật các trường nhập liệu khi cài đặt thay đổi từ DataStore (ví dụ: tải ban đầu hoặc thay đổi bên ngoài)
     LaunchedEffect(focusTime) { focusTimeInput = focusTime.toString() }
     LaunchedEffect(shortBreakTime) { shortBreakTimeInput = shortBreakTime.toString() }
     LaunchedEffect(longBreakTime) { longBreakTimeInput = longBreakTime.toString() }
+    LaunchedEffect(shortBreaksBeforeLongBreak) { shortBreaksBeforeLongBreakInput = shortBreaksBeforeLongBreak.toString() }
 
     Scaffold(
         topBar = {
@@ -92,6 +95,19 @@ fun SettingsScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // New OutlinedTextField for Short Breaks Before Long Break setting
+            // OutlinedTextField mới cho cài đặt Số lần nghỉ ngắn trước khi nghỉ dài
+            OutlinedTextField(
+                value = shortBreaksBeforeLongBreakInput,
+                onValueChange = { newValue ->
+                    shortBreaksBeforeLongBreakInput = newValue.filter { it.isDigit() }
+                },
+                label = { Text("Số phiên làm việc trước khi nghỉ dài") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(24.dp))
 
             // Button to save all settings
@@ -103,6 +119,7 @@ fun SettingsScreen(
                     focusTimeInput.toIntOrNull()?.let { viewModel.saveFocusTime(it) }
                     shortBreakTimeInput.toIntOrNull()?.let { viewModel.saveShortBreakTime(it) }
                     longBreakTimeInput.toIntOrNull()?.let { viewModel.saveLongBreakTime(it) }
+                    shortBreaksBeforeLongBreakInput.toIntOrNull()?.let { viewModel.saveShortBreaksBeforeLongBreak(it) }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

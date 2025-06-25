@@ -12,4 +12,6 @@ class GetPomodoroSettingsUseCase @Inject constructor(
     fun getShortBreakTime(): Flow<Int> = repository.getShortBreakTimeSetting()
 
     fun getLongBreakTime(): Flow<Int> = repository.getLongBreakTimeSetting()
+
+    fun getShortBreaksBeforeLongBreak(): Flow<Int> = repository.getShortBreaksBeforeLongBreakSetting()
 }

@@ -28,6 +28,9 @@ class SettingsViewModel @Inject constructor(
     private val _longBreakTime = MutableStateFlow(SettingsDataStore.DEFAULT_LONG_BREAK_TIME)
     val longBreakTime: StateFlow<Int> = _longBreakTime.asStateFlow()
 
+    private val _shortBreaksBeforeLongBreak = MutableStateFlow(SettingsDataStore.DEFAULT_SHORT_BREAKS_BEFORE_LONG_BREAK)
+    val shortBreaksBeforeLongBreak: StateFlow<Int> = _shortBreaksBeforeLongBreak.asStateFlow()
+
     init {
         // Thu thập cài đặt từ DataStore thông qua UseCase ngay khi ViewModel được tạo
         viewModelScope.launch {
@@ -38,6 +41,9 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getLongBreakTime().collect { _longBreakTime.value = it }
+        }
+        viewModelScope.launch {
+            getPomodoroSettingsUseCase.getShortBreaksBeforeLongBreak().collect { _shortBreaksBeforeLongBreak.value = it }
         }
     }
 
@@ -68,6 +74,17 @@ class SettingsViewModel @Inject constructor(
     fun saveLongBreakTime(time: Int) {
         viewModelScope.launch {
             savePomodoroSettingsUseCase.saveLongBreakTime(time)
+        }
+    }
+
+    /**
+     * Saves the new number of short breaks before a long break setting.
+     * Lưu cài đặt số lần nghỉ ngắn mới trước khi nghỉ dài.
+     * @param count The new count.
+     */
+    fun saveShortBreaksBeforeLongBreak(count: Int) {
+        viewModelScope.launch {
+            savePomodoroSettingsUseCase.saveShortBreaksBeforeLongBreak(count)
         }
     }
 }

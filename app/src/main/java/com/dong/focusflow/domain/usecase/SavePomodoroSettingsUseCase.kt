@@ -11,4 +11,6 @@ class SavePomodoroSettingsUseCase @Inject constructor(
     suspend fun saveShortBreakTime(time: Int) = repository.saveShortBreakTimeSetting(time)
 
     suspend fun saveLongBreakTime(time: Int) = repository.saveLongBreakTimeSetting(time)
+
+    suspend fun saveShortBreaksBeforeLongBreak(count: Int) = repository.saveShortBreaksBeforeLongBreakSetting(count)
 }

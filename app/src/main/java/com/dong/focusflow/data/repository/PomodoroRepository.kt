@@ -44,6 +44,10 @@ class PomodoroRepository @Inject constructor(
         return settingsDataStore.longBreakTime
     }
 
+    fun getShortBreaksBeforeLongBreakSetting(): Flow<Int> {
+        return settingsDataStore.shortBreaksBeforeLongBreak
+    }
+
     suspend fun saveFocusTimeSetting(time: Int) {
         settingsDataStore.saveFocusTime(time)
     }
@@ -54,5 +58,9 @@ class PomodoroRepository @Inject constructor(
 
     suspend fun saveLongBreakTimeSetting(time: Int) {
         settingsDataStore.saveLongBreakTime(time)
+    }
+
+    suspend fun saveShortBreaksBeforeLongBreakSetting(count: Int) {
+        settingsDataStore.saveShortBreaksBeforeLongBreak(count)
     }
 }
