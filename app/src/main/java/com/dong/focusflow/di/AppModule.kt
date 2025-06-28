@@ -6,6 +6,7 @@ import com.dong.focusflow.data.local.AppDatabase
 import com.dong.focusflow.data.local.dao.PomodoroDao
 import com.dong.focusflow.data.local.datastore.SettingsDataStore
 import com.dong.focusflow.data.repository.PomodoroRepository
+import com.dong.focusflow.utils.SoundPlayer
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,5 +46,11 @@ object AppModule {
         settingsDataStore: SettingsDataStore
     ): PomodoroRepository {
         return PomodoroRepository(pomodoroDao, settingsDataStore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSoundPlayer(@ApplicationContext context: Context): SoundPlayer {
+        return SoundPlayer(context)
     }
 }

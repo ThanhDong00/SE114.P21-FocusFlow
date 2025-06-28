@@ -18,12 +18,14 @@ import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
 import javax.inject.Inject
+import com.dong.focusflow.utils.SoundPlayer
 
 @HiltViewModel
 class PomodoroViewModel @Inject constructor(
     private val application: Application,
     private val getPomodoroSettingsUseCase: GetPomodoroSettingsUseCase,
-    private val recordPomodoroSessionUseCase: RecordPomodoroSessionUseCase
+    private val recordPomodoroSessionUseCase: RecordPomodoroSessionUseCase,
+    private val soundPlayer: SoundPlayer
 ) : ViewModel() {
 
     // Settings StateFlows
@@ -155,13 +157,32 @@ class PomodoroViewModel @Inject constructor(
         _timerState.value = TimerState.FINISHED
         recordSession(completed = true)
 
+        stopNotificationService()
+
+        // Phát âm thanh dựa trên loại phiên
+        when (_currentSessionType.value) {
+            PomodoroSessionType.FOCUS -> soundPlayer.playFocusEndSound()
+            PomodoroSessionType.SHORT_BREAK -> soundPlayer.playBreakEndSound()
+            PomodoroSessionType.LONG_BREAK -> soundPlayer.playBreakEndSound() // Long break can use the same break sound
+        }
+
+        sendCompletionNotificationIntent(_currentSessionType.value)
+
         if (_currentSessionType.value == PomodoroSessionType.FOCUS) {
             completedFocusSessionCount++
         }
 
         switchToNextSession()
         _timerState.value = TimerState.STOPPED
-        updateNotificationService()
+//        updateNotificationService()
+    }
+
+    private fun sendCompletionNotificationIntent(finishedSessionType: PomodoroSessionType) {
+        val completionIntent = Intent(application, PomodoroNotificationService::class.java).apply {
+            action = PomodoroNotificationService.ACTION_SESSION_FINISHED
+            putExtra(PomodoroNotificationService.EXTRA_FINISHED_SESSION_TYPE, finishedSessionType.name)
+        }
+        application.startService(completionIntent)
     }
 
     private fun switchToNextSession() {
@@ -278,9 +299,9 @@ class PomodoroViewModel @Inject constructor(
      */
     private fun updateNotificationService() {
         val intent = Intent(application, PomodoroNotificationService::class.java).apply {
-            putExtra("remainingMillis", _remainingTime.value)
-            putExtra("sessionType", _currentSessionType.value.name)
-            putExtra("isRunning", _timerState.value == TimerState.RUNNING)
+            putExtra(PomodoroNotificationService.EXTRA_REMAINING_MILLIS, _remainingTime.value)
+            putExtra(PomodoroNotificationService.EXTRA_SESSION_TYPE, _currentSessionType.value.name)
+            putExtra(PomodoroNotificationService.EXTRA_IS_RUNNING, _timerState.value == TimerState.RUNNING)
         }
         application.startForegroundService(intent)
     }
@@ -296,7 +317,14 @@ class PomodoroViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         countDownTimer?.cancel()
-        stopNotificationService()
+        stopSoundAndNotification()
+    }
+
+    private fun stopSoundAndNotification() {
+        soundPlayer.stopSound() // Stop any playing sound
+        stopNotificationService() // Stop the ongoing notification
+        // No need to explicitly cancel completion notification here,
+        // as it's auto-cancelled on tap and handled by service's onDestroy.
     }
 
     companion object {
