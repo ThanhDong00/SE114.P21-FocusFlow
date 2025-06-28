@@ -31,6 +31,9 @@ class SettingsViewModel @Inject constructor(
     private val _shortBreaksBeforeLongBreak = MutableStateFlow(SettingsDataStore.DEFAULT_SHORT_BREAKS_BEFORE_LONG_BREAK)
     val shortBreaksBeforeLongBreak: StateFlow<Int> = _shortBreaksBeforeLongBreak.asStateFlow()
 
+    private val _userMessage = MutableStateFlow<String?>(null)
+    val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
+
     init {
         // Thu thập cài đặt từ DataStore thông qua UseCase ngay khi ViewModel được tạo
         viewModelScope.launch {
@@ -54,6 +57,7 @@ class SettingsViewModel @Inject constructor(
     fun saveFocusTime(time: Int) {
         viewModelScope.launch {
             savePomodoroSettingsUseCase.saveFocusTime(time)
+            _userMessage.value = "Cài đặt đã lưu thành công!"
         }
     }
 
@@ -64,6 +68,7 @@ class SettingsViewModel @Inject constructor(
     fun saveShortBreakTime(time: Int) {
         viewModelScope.launch {
             savePomodoroSettingsUseCase.saveShortBreakTime(time)
+            _userMessage.value = "Cài đặt đã lưu thành công!"
         }
     }
 
@@ -74,6 +79,7 @@ class SettingsViewModel @Inject constructor(
     fun saveLongBreakTime(time: Int) {
         viewModelScope.launch {
             savePomodoroSettingsUseCase.saveLongBreakTime(time)
+            _userMessage.value = "Cài đặt đã lưu thành công!"
         }
     }
 
@@ -85,6 +91,11 @@ class SettingsViewModel @Inject constructor(
     fun saveShortBreaksBeforeLongBreak(count: Int) {
         viewModelScope.launch {
             savePomodoroSettingsUseCase.saveShortBreaksBeforeLongBreak(count)
+            _userMessage.value = "Cài đặt đã lưu thành công!"
         }
+    }
+
+    fun clearUserMessage() {
+        _userMessage.value = null
     }
 }

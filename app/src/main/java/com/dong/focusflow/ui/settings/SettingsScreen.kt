@@ -12,6 +12,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dong.focusflow.ui.theme.FocusFlowTheme // Đảm bảo đúng tên theme của bạn
+import kotlinx.coroutines.launch
 
 /**
  * Composable function for the Settings screen.
@@ -32,6 +33,7 @@ fun SettingsScreen(
     val shortBreakTime by viewModel.shortBreakTime.collectAsState()
     val longBreakTime by viewModel.longBreakTime.collectAsState()
     val shortBreaksBeforeLongBreak by viewModel.shortBreaksBeforeLongBreak.collectAsState()
+    val userMessage by viewModel.userMessage.collectAsState()
 
     // Use mutable states for text fields to allow editing
     // Sử dụng các trạng thái có thể thay đổi cho các trường văn bản để cho phép chỉnh sửa
@@ -47,10 +49,25 @@ fun SettingsScreen(
     LaunchedEffect(longBreakTime) { longBreakTimeInput = longBreakTime.toString() }
     LaunchedEffect(shortBreaksBeforeLongBreak) { shortBreaksBeforeLongBreakInput = shortBreaksBeforeLongBreak.toString() }
 
+    // New: SnackbarHostState to control the Snackbar
+    // Mới: SnackbarHostState để điều khiển Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope() // CoroutineScope for launching snackbar
+
+    LaunchedEffect(userMessage) {
+        userMessage?.let { message ->
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(message = message, duration = SnackbarDuration.Short)
+                viewModel.clearUserMessage() // Clear the message after showing
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Cài đặt Pomodoro") }) // Top app bar title
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
