@@ -50,6 +50,7 @@ class PomodoroViewModel @Inject constructor(
     private var sessionDurationMillis: Long = 0L
     private var isManualSkip: Boolean = false
     private var completedFocusSessionCount: Int = 0
+    private var isRestoringFromNotification: Boolean = false
 
     enum class TimerState {
         RUNNING, PAUSED, STOPPED, FINISHED
@@ -63,7 +64,10 @@ class PomodoroViewModel @Inject constructor(
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getFocusTime().collect { time ->
                 _focusTime.value = time
-                if (_timerState.value == TimerState.STOPPED && _currentSessionType.value == PomodoroSessionType.FOCUS && _remainingTime.value == 0L) {
+                // Only update remaining time if timer is stopped, in focus session, and not restoring from notification
+                if (_timerState.value == TimerState.STOPPED && 
+                    _currentSessionType.value == PomodoroSessionType.FOCUS && 
+                    !isRestoringFromNotification) {
                     _remainingTime.value = time * 60L * 1000L
                 }
             }
@@ -94,6 +98,8 @@ class PomodoroViewModel @Inject constructor(
      */
     fun restoreTimerState(remainingMillis: Long, sessionType: PomodoroSessionType, isRunning: Boolean) {
         if (_timerState.value == TimerState.STOPPED && remainingMillis > 0L) {
+            isRestoringFromNotification = true // Set flag to prevent settings from overriding
+            
             _remainingTime.value = remainingMillis
             _currentSessionType.value = sessionType
             _timerState.value = if (isRunning) TimerState.PAUSED else TimerState.STOPPED
@@ -104,6 +110,12 @@ class PomodoroViewModel @Inject constructor(
             
             if (isRunning) {
                 startTimer()
+            }
+            
+            // Reset flag after a short delay to allow settings to be processed
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(1000) // 1 second delay
+                isRestoringFromNotification = false
             }
         }
     }
@@ -224,6 +236,7 @@ class PomodoroViewModel @Inject constructor(
         _timerState.value = TimerState.STOPPED
         isManualSkip = false
         completedFocusSessionCount = 0
+        isRestoringFromNotification = false // Reset flag when manually resetting
         stopNotificationService()
     }
 
@@ -321,10 +334,8 @@ class PomodoroViewModel @Inject constructor(
     }
 
     private fun stopSoundAndNotification() {
-        soundPlayer.stopSound() // Stop any playing sound
-        stopNotificationService() // Stop the ongoing notification
-        // No need to explicitly cancel completion notification here,
-        // as it's auto-cancelled on tap and handled by service's onDestroy.
+        soundPlayer.stopSound()
+        stopNotificationService()
     }
 
     companion object {

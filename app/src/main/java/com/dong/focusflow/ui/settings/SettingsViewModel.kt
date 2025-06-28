@@ -18,7 +18,7 @@ class SettingsViewModel @Inject constructor(
     private val savePomodoroSettingsUseCase: SavePomodoroSettingsUseCase
 ) : ViewModel() {
 
-    // MutableStateFlow để giữ các cài đặt hiện tại, được hiển thị dưới dạng StateFlow
+    // Settings StateFlows
     private val _focusTime = MutableStateFlow(SettingsDataStore.DEFAULT_FOCUS_TIME)
     val focusTime: StateFlow<Int> = _focusTime.asStateFlow()
 
@@ -31,71 +31,80 @@ class SettingsViewModel @Inject constructor(
     private val _shortBreaksBeforeLongBreak = MutableStateFlow(SettingsDataStore.DEFAULT_SHORT_BREAKS_BEFORE_LONG_BREAK)
     val shortBreaksBeforeLongBreak: StateFlow<Int> = _shortBreaksBeforeLongBreak.asStateFlow()
 
+    // UI State
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
     init {
-        // Thu thập cài đặt từ DataStore thông qua UseCase ngay khi ViewModel được tạo
+        loadSettings()
+    }
+
+    private fun loadSettings() {
         viewModelScope.launch {
-            getPomodoroSettingsUseCase.getFocusTime().collect { _focusTime.value = it }
+            getPomodoroSettingsUseCase.getFocusTime().collect { 
+                _focusTime.value = it 
+            }
         }
+        
         viewModelScope.launch {
-            getPomodoroSettingsUseCase.getShortBreakTime().collect { _shortBreakTime.value = it }
+            getPomodoroSettingsUseCase.getShortBreakTime().collect { 
+                _shortBreakTime.value = it 
+            }
         }
+        
         viewModelScope.launch {
-            getPomodoroSettingsUseCase.getLongBreakTime().collect { _longBreakTime.value = it }
+            getPomodoroSettingsUseCase.getLongBreakTime().collect { 
+                _longBreakTime.value = it 
+            }
         }
+        
         viewModelScope.launch {
-            getPomodoroSettingsUseCase.getShortBreaksBeforeLongBreak().collect { _shortBreaksBeforeLongBreak.value = it }
+            getPomodoroSettingsUseCase.getShortBreaksBeforeLongBreak().collect { 
+                _shortBreaksBeforeLongBreak.value = it 
+            }
         }
     }
 
     /**
-     * Lưu cài đặt thời gian tập trung mới.
-     * @param time The new focus time in minutes.
+     * Saves the focus time setting.
      */
     fun saveFocusTime(time: Int) {
-        viewModelScope.launch {
-            savePomodoroSettingsUseCase.saveFocusTime(time)
-            _userMessage.value = "Cài đặt đã lưu thành công!"
-        }
+        saveSetting { savePomodoroSettingsUseCase.saveFocusTime(time) }
     }
 
     /**
-     * Lưu cài đặt thời gian nghỉ ngắn mới.
-     * @param time The new short break time in minutes.
+     * Saves the short break time setting.
      */
     fun saveShortBreakTime(time: Int) {
-        viewModelScope.launch {
-            savePomodoroSettingsUseCase.saveShortBreakTime(time)
-            _userMessage.value = "Cài đặt đã lưu thành công!"
-        }
+        saveSetting { savePomodoroSettingsUseCase.saveShortBreakTime(time) }
     }
 
     /**
-     * Lưu cài đặt thời gian nghỉ dài mới.
-     * @param time The new long break time in minutes.
+     * Saves the long break time setting.
      */
     fun saveLongBreakTime(time: Int) {
-        viewModelScope.launch {
-            savePomodoroSettingsUseCase.saveLongBreakTime(time)
-            _userMessage.value = "Cài đặt đã lưu thành công!"
-        }
+        saveSetting { savePomodoroSettingsUseCase.saveLongBreakTime(time) }
     }
 
     /**
-     * Saves the new number of short breaks before a long break setting.
-     * Lưu cài đặt số lần nghỉ ngắn mới trước khi nghỉ dài.
-     * @param count The new count.
+     * Saves the number of short breaks before a long break setting.
      */
     fun saveShortBreaksBeforeLongBreak(count: Int) {
+        saveSetting { savePomodoroSettingsUseCase.saveShortBreaksBeforeLongBreak(count) }
+    }
+
+    private fun saveSetting(saveAction: suspend () -> Unit) {
         viewModelScope.launch {
-            savePomodoroSettingsUseCase.saveShortBreaksBeforeLongBreak(count)
-            _userMessage.value = "Cài đặt đã lưu thành công!"
+            saveAction()
+            _userMessage.value = "Settings saved successfully!"
         }
     }
 
     fun clearUserMessage() {
         _userMessage.value = null
+    }
+
+    companion object {
+        private const val SUCCESS_MESSAGE = "Settings saved successfully!"
     }
 }
