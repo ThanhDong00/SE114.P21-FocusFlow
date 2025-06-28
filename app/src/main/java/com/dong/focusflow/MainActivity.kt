@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.dong.focusflow.data.local.entity.PomodoroSessionType
 import com.dong.focusflow.ui.pomodoro.PomodoroScreen
 import com.dong.focusflow.ui.settings.SettingsScreen
 import com.dong.focusflow.ui.statistics.StatisticsScreen
@@ -39,17 +40,14 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     // Khởi tạo ActivityResultLauncher để yêu cầu quyền thông báo
-    // Initialize ActivityResultLauncher to request notification permission
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
             // Quyền được cấp, có thể hiển thị thông báo
-            // Permission granted, can show notifications
             println("Notification permission granted")
         } else {
             // Quyền bị từ chối, không thể hiển thị thông báo
-            // Permission denied, cannot show notifications
             println("Notification permission denied")
         }
     }
@@ -58,7 +56,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Yêu cầu quyền POST_NOTIFICATIONS từ Android 13 (API 33) trở lên
-        // Request POST_NOTIFICATIONS permission from Android 13 (API 33) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
@@ -66,26 +63,33 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     // Quyền đã được cấp
-                    // Permission already granted
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
                     // Giải thích lý do cần quyền cho người dùng (có thể hiển thị dialog)
-                    // Explain why the permission is needed (can show a dialog)
                     // Hiện tại, chúng ta chỉ gọi yêu cầu quyền trực tiếp
-                    // For now, we just call the permission request directly
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 else -> {
                     // Yêu cầu quyền lần đầu
-                    // Request permission for the first time
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         }
 
+        // Lấy thông tin từ Intent nếu nó đến từ thông báo
+        val initialRemainingMillis = intent.getLongExtra(PomodoroNotificationService.EXTRA_REMAINING_MILLIS, 0L)
+        val initialSessionType = intent.getStringExtra(PomodoroNotificationService.EXTRA_SESSION_TYPE)
+        val initialIsRunning = intent.getBooleanExtra(PomodoroNotificationService.EXTRA_IS_RUNNING, false)
+        val initialAction = intent.action
+
         setContent {
-            FocusFlowTheme { // Apply the custom theme
-                MainApp() // Call the main Composable function
+            FocusFlowTheme {
+                MainApp(
+                    initialRemainingMillis = initialRemainingMillis,
+                    initialSessionType = initialSessionType?.let { PomodoroSessionType.valueOf(it) },
+                    initialIsRunning = initialIsRunning,
+                    initialAction = initialAction
+                )
             }
         }
     }
@@ -93,18 +97,21 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class) // Opt-in for experimental Material 3 APIs like TopAppBar
 @Composable
-fun MainApp() {
+fun MainApp(
+    initialRemainingMillis: Long = 0L,
+    initialSessionType: PomodoroSessionType? = null,
+    initialIsRunning: Boolean = false,
+    initialAction: String? = null
+) {
     val navController = rememberNavController() // Create and remember a NavController
     val currentBackStackEntry by navController.currentBackStackEntryAsState() // Observe current navigation state
     val currentRoute = currentBackStackEntry?.destination?.route // Get the current route
 
     Scaffold(
         bottomBar = {
-            // Bottom navigation bar to switch between screens
             NavigationBar(
                 containerColor = Blue50
             ) {
-                // Iterate through defined navigation items
                 BottomNavItem.values().forEach { item ->
                     val selected = currentRoute == item.route // Check if current item is selected
                     NavigationBarItem(
@@ -153,7 +160,12 @@ fun MainApp() {
         ) {
             // Define composable destinations for each route
             composable(BottomNavItem.POMODORO.route) {
-                PomodoroScreen()
+                PomodoroScreen(
+                    initialRemainingMillis = initialRemainingMillis,
+                    initialSessionType = initialSessionType,
+                    initialIsRunning = initialIsRunning,
+                    initialAction = initialAction
+                )
             }
             composable(BottomNavItem.STATISTICS.route) {
                 StatisticsScreen()

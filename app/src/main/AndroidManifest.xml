@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Quyền để hiển thị thông báo (từ Android 13 trở lên) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Quyền để chạy dịch vụ foreground (từ Android 9 trở lên) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
     <application
         android:name=".base.PomodoroApplication"
         android:allowBackup="true"
@@ -24,6 +30,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Declare PomodoroNotificationService -->
+        <service
+            android:name=".PomodoroNotificationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
     </application>
 
 </manifest>

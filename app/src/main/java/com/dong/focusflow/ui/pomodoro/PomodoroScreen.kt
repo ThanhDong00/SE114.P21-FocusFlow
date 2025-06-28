@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dong.focusflow.PomodoroNotificationService
 import com.dong.focusflow.R
 import com.dong.focusflow.data.local.entity.PomodoroSessionType
 import com.dong.focusflow.ui.theme.FocusFlowTheme
@@ -49,12 +51,26 @@ import com.dong.focusflow.ui.theme.Red900
 
 @Composable
 fun PomodoroScreen(
-    viewModel: PomodoroViewModel = hiltViewModel()
+    viewModel: PomodoroViewModel = hiltViewModel(),
+    initialRemainingMillis: Long = 0L,
+    initialSessionType: PomodoroSessionType? = null,
+    initialIsRunning: Boolean = false,
+    initialAction: String? = null
 ) {
     // Thu thập StateFlow từ ViewModel để quan sát các thay đổi trong trạng thái UI
     val remainingTime by viewModel.remainingTime.collectAsState()
     val timerState by viewModel.timerState.collectAsState()
     val currentSessionType by viewModel.currentSessionType.collectAsState()
+
+    LaunchedEffect(key1 = initialAction) {
+        if (initialAction == PomodoroNotificationService.ACTION_RESTORE_TIMER && initialRemainingMillis > 0) {
+            viewModel.restoreTimerState(
+                remainingMillis = initialRemainingMillis,
+                sessionType = initialSessionType ?: PomodoroSessionType.FOCUS, // Default to FOCUS if null
+                isRunning = initialIsRunning
+            )
+        }
+    }
 
     // Tính toán phút và giây từ mili giây còn lại
     val minutes = (remainingTime / 1000 / 60).toInt()
