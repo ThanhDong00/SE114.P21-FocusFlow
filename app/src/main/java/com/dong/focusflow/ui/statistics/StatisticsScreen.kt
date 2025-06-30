@@ -9,11 +9,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dong.focusflow.ui.theme.FocusFlowTheme
 import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 import com.dong.focusflow.data.local.entity.PomodoroSession
 import com.dong.focusflow.data.local.entity.PomodoroSessionType
 
@@ -24,6 +26,8 @@ import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
+import com.patrykandpatrick.vico.core.component.shape.Shapes
+import com.patrykandpatrick.vico.core.component.shape.LineComponent
 
 /**
  * Composable function for the Statistics screen.
@@ -44,11 +48,26 @@ fun StatisticsScreen(
     val pomodorosPerDay by viewModel.pomodorosPerDay.collectAsState()
 
     // Prepare data for the chart using ChartEntryModelProducer from Vico library
-    // Chuẩn bị dữ liệu cho biểu đồ bằng ChartEntryModelProducer từ thư viện Vico
+    // Filter data to show only current month
     val chartEntryModelProducer = ChartEntryModelProducer()
-    // Sort data by date to ensure correct order in the chart
-    // Sắp xếp dữ liệu theo ngày để đảm bảo đúng thứ tự trong biểu đồ
-    val sortedData = pomodorosPerDay.entries.sortedBy { it.key }
+    val currentMonth = LocalDate.now().monthValue
+    val currentYear = LocalDate.now().year
+    
+    // Filter pomodorosPerDay to only include current month
+    val currentMonthData = pomodorosPerDay.entries.filter { entry ->
+        try {
+            val dateParts = entry.key.split("-") // Assuming format is "yyyy-MM-dd"
+            if (dateParts.size >= 3) {
+                val year = dateParts[0].toInt()
+                val month = dateParts[1].toInt()
+                year == currentYear && month == currentMonth
+            } else false
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    val sortedData = currentMonthData.sortedBy { it.key }
     val chartEntries = sortedData.mapIndexed { index, entry ->
         entryOf(index.toFloat(), entry.value.toFloat())
     }
@@ -84,14 +103,22 @@ fun StatisticsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Số Pomodoro theo ngày:",
+                text = "Số Pomodoro trong tháng ${currentMonth}/${currentYear}:",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             if (sortedData.isNotEmpty()) {
                 Chart(
-                    chart = columnChart(), // Dùng columnChart() cho Vico 1.16.1
+                    chart = columnChart(
+                        columns = listOf(
+                            LineComponent(
+                                color = MaterialTheme.colorScheme.primary.toArgb(),
+                                thicknessDp = 12f, // Giảm độ dày để hiển thị nhiều column hơn
+                                shape = Shapes.rectShape
+                            )
+                        )
+                    ),
                     chartModelProducer = chartEntryModelProducer,
                     startAxis = rememberStartAxis(
                         valueFormatter = { value, _ -> value.toInt().toString() }
@@ -99,9 +126,17 @@ fun StatisticsScreen(
                     bottomAxis = rememberBottomAxis(
                         valueFormatter = { value, _ ->
                             if (value.toInt() in sortedData.indices) {
-                                sortedData[value.toInt()].key
+                                val dateString = sortedData[value.toInt()].key
+                                // Hiển thị chỉ ngày vì đã filter theo tháng
+                                try {
+                                    val parts = dateString.split("-")
+                                    if (parts.size >= 3) parts[2] else dateString // Chỉ hiển thị ngày
+                                } catch (e: Exception) {
+                                    dateString
+                                }
                             } else ""
-                        }
+                        },
+                        labelRotationDegrees = 0f // Không cần xoay vì chỉ hiển thị số ngày
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -109,7 +144,7 @@ fun StatisticsScreen(
                         .padding(vertical = 8.dp)
                 )
             } else {
-                Text("Chưa có dữ liệu thống kê.", modifier = Modifier.padding(16.dp))
+                Text("Chưa có dữ liệu thống kê cho tháng này.", modifier = Modifier.padding(16.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
 
