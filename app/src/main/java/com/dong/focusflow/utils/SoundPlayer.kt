@@ -47,11 +47,11 @@ class SoundPlayer @Inject constructor(
     }
 
     fun playFocusEndSound() {
-        playSound(R.raw.focus_end_sound) // Make sure you have focus_end_sound.mp3 in res/raw
+        playSound(R.raw.focus_end_sound)
     }
 
     fun playBreakEndSound() {
-        playSound(R.raw.focus_end_sound) // Make sure you have break_end_sound.mp3 in res/raw
+        playSound(R.raw.focus_end_sound)
     }
 
     fun stopSound() {

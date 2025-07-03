@@ -29,11 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +80,17 @@ fun PomodoroScreen(
 
     // Định dạng thời gian để hiển thị (ví dụ: "05:00")
     val displayTime = String.format("%02d\n%02d", minutes, seconds)
+    
+    // Responsive font size based on screen width
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val fontSize = when {
+        screenWidth < 360 -> 180.sp // Màn hình nhỏ
+        screenWidth < 480 -> 220.sp // Màn hình trung bình
+        else -> 256.sp // Màn hình lớn
+    }
+    val lineHeight = fontSize * 0.8f // Line height bằng 80% của font size
+    
     val backgroundColor = when (currentSessionType) {
         PomodoroSessionType.FOCUS -> Red50
         PomodoroSessionType.SHORT_BREAK -> Green50
@@ -96,23 +109,12 @@ fun PomodoroScreen(
 
     Column(
         modifier = Modifier
-            .fillMaxSize() // Fill the entire screen
+            .fillMaxSize()
             .background(backgroundColor)
-            .padding(16.dp), // Add padding around the content
-        horizontalAlignment = Alignment.CenterHorizontally, // Center content horizontally
-        verticalArrangement = Arrangement.Center // Center content vertically
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Hiển thị loại phiên hiện tại (TẬP TRUNG, NGHỈ NGẮN, NGHỈ DÀI)
-//        Text(
-//            text = when (currentSessionType) {
-//                PomodoroSessionType.FOCUS -> "TẬP TRUNG"
-//                PomodoroSessionType.SHORT_BREAK -> "NGHỈ NGẮN"
-//                PomodoroSessionType.LONG_BREAK -> "NGHỈ DÀI"
-//            },
-//            style = MaterialTheme.typography.headlineMedium, // Use a large heading style
-//            color = MaterialTheme.colorScheme.primary // Use primary color from theme
-//        )
-//        Spacer(modifier = Modifier.height(32.dp)) // Add vertical space
 
         AssistChip(
             onClick = {},
@@ -149,22 +151,6 @@ fun PomodoroScreen(
                 .padding(top = 16.dp)
         )
 
-        // Animated content for the timer display, for a smoother transition on time change
-        // Nội dung động cho hiển thị đồng hồ, để chuyển đổi mượt mà hơn khi thời gian thay đổi
-//        AnimatedContent(
-//            targetState = displayTime,
-//            transitionSpec = {
-//                scaleIn() togetherWith scaleOut() // Scale in/out animation
-//            }, label = "Time Animation"
-//        ) { targetText ->
-//            Text(
-//                text = targetText,
-//                style = MaterialTheme.typography.displayLarge, // Use an even larger display style
-//                fontSize = 80.sp, // Explicitly set font size for prominence
-//                color = MaterialTheme.colorScheme.onBackground // Text color
-//            )
-//        }
-//        Spacer(modifier = Modifier.height(32.dp)) // Add vertical space
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f),
@@ -173,16 +159,19 @@ fun PomodoroScreen(
 
             Text(
                 text = displayTime,
-                fontSize = 256.sp,
+                fontSize = fontSize,
                 fontWeight = FontWeight(850),
                 fontFamily = FontFamily.Monospace,
-                lineHeight = 256.sp,
                 color = textColor,
+                lineHeight = lineHeight,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeight = 256.sp
+                    lineHeight = lineHeight
                 ),
-                modifier = Modifier.padding(0.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             )
         }
 
@@ -193,32 +182,6 @@ fun PomodoroScreen(
             horizontalArrangement = Arrangement.SpaceAround, // Phân bổ đều các nút
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Start/Pause Button
-            // Nút Bắt đầu/Tạm dừng
-//            Button(
-//                onClick = {
-//                    when (timerState) {
-//                        PomodoroViewModel.TimerState.RUNNING -> viewModel.pauseTimer() // If running, pause
-//                        else -> viewModel.startTimer() // Otherwise, start
-//                    }
-//                },
-//                colors = ButtonDefaults.buttonColors(
-//                    containerColor = when (timerState) {
-//                        PomodoroViewModel.TimerState.RUNNING -> MaterialTheme.colorScheme.secondary // Different color when paused
-//                        else -> MaterialTheme.colorScheme.primary // Primary color when stopped/finished
-//                    }
-//                ),
-//                modifier = Modifier.weight(1f) // Make button take available space
-//            ) {
-//                Icon(
-//                    imageVector = if (timerState == PomodoroViewModel.TimerState.RUNNING) Icons.Default.Star else Icons.Default.PlayArrow,
-//                    contentDescription = if (timerState == PomodoroViewModel.TimerState.RUNNING) "Tạm dừng" else "Bắt đầu",
-//                    tint = Color.White // White icon color
-//                )
-//                Spacer(modifier = Modifier.width(8.dp)) // Space between icon and text
-//                Text(text = if (timerState == PomodoroViewModel.TimerState.RUNNING) "Tạm dừng" else "Bắt đầu")
-//            }
-//            Spacer(modifier = Modifier.width(16.dp)) // Space between buttons
 
             // Restart
             Button(
@@ -240,57 +203,27 @@ fun PomodoroScreen(
                     contentDescription = "Restart",
                     modifier = Modifier.size(32.dp)
                 )
-//
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Text(
-//                    text = "Đặt lại",
-//                    fontSize = 32.sp
-//                )
             }
-
-            // Reset Button
-            // Nút Đặt lại
-//            Button(
-//                onClick = { viewModel.resetTimer() },
-//                enabled = timerState != PomodoroViewModel.TimerState.STOPPED, // Only enabled if timer is not already stopped
-//                modifier = Modifier.weight(1f),
-//                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) // Error color for reset
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Default.Refresh,
-//                    contentDescription = "Đặt lại",
-//                    tint = Color.White
-//                )
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Text(text = "Đặt lại")
-//            }
 
             // Start / Pause
             Button(
                 onClick = {
                     when (timerState) {
                         PomodoroViewModel.TimerState.RUNNING -> viewModel.pauseTimer() // If running, pause
-                        else -> viewModel.startTimer() // Otherwise, start
+                        else -> viewModel.startTimer()
                     }
                 },
                 modifier = Modifier
-                    .size(96.dp) // Nút lớn hơn
-                    .weight(1.5f) // Chiếm không gian lớn hơn
+                    .size(96.dp)
+                    .weight(1.5f)
                     .padding(horizontal = 8.dp),
-                shape = RoundedCornerShape(24.dp), // Bo tròn góc lớn hơn
+                shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor  = buttonBackgroundColor,
                     contentColor = textColor
                 )
             ) {
-//                Icon(
-//                    imageVector = Icons.Default.PlayArrow,
-//                    contentDescription = "Play/Pause",
-//                    tint = Color.White, // Màu trắng cho icon
-//                    modifier = Modifier.size(48.dp)
-//                )
-
                 Icon(
                     painter = if (timerState == PomodoroViewModel.TimerState.RUNNING) painterResource(
                         R.drawable.baseline_play_arrow_24
@@ -298,9 +231,6 @@ fun PomodoroScreen(
                     contentDescription = if (timerState == PomodoroViewModel.TimerState.RUNNING) "Tạm dừng" else "Bắt đầu",
                     modifier = Modifier.size(48.dp),
                 )
-
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Text(text = if (timerState == PomodoroViewModel.TimerState.RUNNING) "Tạm dừng" else "Bắt đầu")
             }
 
             // Skip
@@ -322,25 +252,8 @@ fun PomodoroScreen(
                     contentDescription = "Skip",
                     modifier = Modifier.size(32.dp)
                 )
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Text(text = "Bỏ qua phiên")
             }
         }
-        // Skip Session Button
-        // Nút Bỏ qua phiên
-//        Button(
-//            onClick = { viewModel.skipSession() },
-//            modifier = Modifier.fillMaxWidth(), // Fill full width
-//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary) // Tertiary color for skip
-//        ) {
-//            Icon(
-//                imageVector = Icons.Default.Check,
-//                contentDescription = "Bỏ qua",
-//                tint = Color.White
-//            )
-//            Spacer(modifier = Modifier.width(8.dp))
-//            Text(text = "Bỏ qua phiên")
-//        }
     }
 }
 

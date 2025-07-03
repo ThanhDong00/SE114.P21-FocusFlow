@@ -39,15 +39,12 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    // Khởi tạo ActivityResultLauncher để yêu cầu quyền thông báo
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Quyền được cấp, có thể hiển thị thông báo
             println("Notification permission granted")
         } else {
-            // Quyền bị từ chối, không thể hiển thị thông báo
             println("Notification permission denied")
         }
     }
@@ -55,22 +52,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Yêu cầu quyền POST_NOTIFICATIONS từ Android 13 (API 33) trở lên
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Quyền đã được cấp
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    // Giải thích lý do cần quyền cho người dùng (có thể hiển thị dialog)
-                    // Hiện tại, chúng ta chỉ gọi yêu cầu quyền trực tiếp
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 else -> {
-                    // Yêu cầu quyền lần đầu
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -95,7 +87,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // Opt-in for experimental Material 3 APIs like TopAppBar
 @Composable
 fun MainApp(
     initialRemainingMillis: Long = 0L,
@@ -103,9 +94,9 @@ fun MainApp(
     initialIsRunning: Boolean = false,
     initialAction: String? = null
 ) {
-    val navController = rememberNavController() // Create and remember a NavController
-    val currentBackStackEntry by navController.currentBackStackEntryAsState() // Observe current navigation state
-    val currentRoute = currentBackStackEntry?.destination?.route // Get the current route
+    val navController = rememberNavController()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
@@ -113,52 +104,44 @@ fun MainApp(
                 containerColor = Blue50
             ) {
                 BottomNavItem.values().forEach { item ->
-                    val selected = currentRoute == item.route // Check if current item is selected
+                    val selected = currentRoute == item.route
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
-                            if (currentRoute != item.route) { // Navigate only if not already on the selected route
+                            if (currentRoute != item.route) {
                                 navController.navigate(item.route) {
-                                    // Pop up to the start destination of the graph to
-                                    // avoid building up a large stack of destinations
-                                    // on the back stack as users select items
                                     popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true // Save state of popped destinations
+                                        saveState = true
                                     }
-                                    // Avoid multiple copies of the same destination when
-                                    // reselecting the same item
                                     launchSingleTop = true
-                                    // Restore state when reselecting a previously selected item
                                     restoreState = true
                                 }
                             }
                         },
                         icon = {
                             Icon(
-                                imageVector = item.icon, // Icon for the navigation item
-                                contentDescription = item.title // Content description for accessibility
+                                imageVector = item.icon,
+                                contentDescription = item.title
                             )
                         },
-                        label = { Text(item.title) }, // Text label for the navigation item
+                        label = { Text(item.title) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Blue900, // Ví dụ: đổi màu icon khi được chọn
-                            unselectedIconColor = Blue500, // Ví dụ: đổi màu icon khi không được chọn
-                            selectedTextColor = Blue900, // Ví dụ: đổi màu chữ khi được chọn
-                            unselectedTextColor = Blue500, // Ví dụ: đổi màu chữ khi không được chọn
-                            indicatorColor = Blue600 // Ví dụ: đổi màu chỉ báo (nếu có)
+                            selectedIconColor = Blue900,
+                            unselectedIconColor = Blue500,
+                            selectedTextColor = Blue900,
+                            unselectedTextColor = Blue500,
+                            indicatorColor = Blue600
                         )
                     )
                 }
             }
         }
     ) { paddingValues ->
-        // NavHost defines the navigation graph
         NavHost(
             navController = navController,
-            startDestination = BottomNavItem.POMODORO.route, // Set Pomodoro as the initial screen
-            modifier = Modifier.padding(paddingValues) // Apply padding from Scaffold
+            startDestination = BottomNavItem.POMODORO.route,
+            modifier = Modifier.padding(paddingValues)
         ) {
-            // Define composable destinations for each route
             composable(BottomNavItem.POMODORO.route) {
                 PomodoroScreen(
                     initialRemainingMillis = initialRemainingMillis,
@@ -178,13 +161,12 @@ fun MainApp(
 }
 
 /**
- * Sealed class để định nghĩa các mục điều hướng dưới cùng.
  * Mỗi mục có tiêu đề, biểu tượng và một route duy nhất.
  */
 enum class BottomNavItem(val title: String, val icon: ImageVector, val route: String) {
-    POMODORO("Pomodoro", Icons.Default.Home, "pomodoro_screen"), // Route for Pomodoro screen
-    STATISTICS("Thống kê", Icons.Default.Star, "statistics_screen"), // Route for Statistics screen
-    SETTINGS("Cài đặt", Icons.Default.Settings, "settings_screen") // Route for Settings screen
+    POMODORO("Pomodoro", Icons.Default.Home, "pomodoro_screen"),
+    STATISTICS("Thống kê", Icons.Default.Star, "statistics_screen"),
+    SETTINGS("Cài đặt", Icons.Default.Settings, "settings_screen")
 }
 
 /**

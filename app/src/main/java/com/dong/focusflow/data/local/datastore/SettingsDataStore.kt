@@ -49,9 +49,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
         }
 
     /**
-     * Saves the focus time setting.
      * Lưu cài đặt thời gian tập trung.
-     * @param time The focus time in minutes. Thời gian tập trung tính bằng phút.
      */
     suspend fun saveFocusTime(time: Int) {
         context.dataStore.edit { preferences ->
@@ -60,9 +58,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     }
 
     /**
-     * Saves the short break time setting.
      * Lưu cài đặt thời gian nghỉ ngắn.
-     * @param time The short break time in minutes. Thời gian nghỉ ngắn tính bằng phút.
      */
     suspend fun saveShortBreakTime(time: Int) {
         context.dataStore.edit { preferences ->
@@ -71,9 +67,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     }
 
     /**
-     * Saves the long break time setting.
      * Lưu cài đặt thời gian nghỉ dài.
-     * @param time The long break time in minutes. Thời gian nghỉ dài tính bằng phút.
      */
     suspend fun saveLongBreakTime(time: Int) {
         context.dataStore.edit { preferences ->
@@ -82,9 +76,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
     }
 
     /**
-     * Saves the number of short breaks before a long break setting.
      * Lưu cài đặt số lần nghỉ ngắn trước khi nghỉ dài.
-     * @param count The number of short breaks.
      */
     suspend fun saveShortBreaksBeforeLongBreak(count: Int) {
         context.dataStore.edit { preferences ->

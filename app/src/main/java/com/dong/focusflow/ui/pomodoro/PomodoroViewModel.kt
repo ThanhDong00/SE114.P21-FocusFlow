@@ -51,6 +51,7 @@ class PomodoroViewModel @Inject constructor(
     private var isManualSkip: Boolean = false
     private var completedFocusSessionCount: Int = 0
     private var isRestoringFromNotification: Boolean = false
+    private var hasRestoredFromNotification: Boolean = false
 
     enum class TimerState {
         RUNNING, PAUSED, STOPPED, FINISHED
@@ -65,26 +66,27 @@ class PomodoroViewModel @Inject constructor(
             getPomodoroSettingsUseCase.getFocusTime().collect { time ->
                 _focusTime.value = time
                 // Only update remaining time if timer is stopped, in focus session, and not restoring from notification
-                if (_timerState.value == TimerState.STOPPED && 
-                    _currentSessionType.value == PomodoroSessionType.FOCUS && 
-                    !isRestoringFromNotification) {
+                if (_timerState.value == TimerState.STOPPED &&
+                    _currentSessionType.value == PomodoroSessionType.FOCUS &&
+                    !isRestoringFromNotification
+                ) {
                     _remainingTime.value = time * 60L * 1000L
                 }
             }
         }
-        
+
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getShortBreakTime().collect { time ->
                 _shortBreakTime.value = time
             }
         }
-        
+
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getLongBreakTime().collect { time ->
                 _longBreakTime.value = time
             }
         }
-        
+
         viewModelScope.launch {
             getPomodoroSettingsUseCase.getShortBreaksBeforeLongBreak().collect { count ->
                 _shortBreaksBeforeLongBreak.value = count
@@ -96,22 +98,39 @@ class PomodoroViewModel @Inject constructor(
      * Restores timer state from external source (e.g., notification tap).
      * Should only be called once when screen is created with initial data.
      */
-    fun restoreTimerState(remainingMillis: Long, sessionType: PomodoroSessionType, isRunning: Boolean) {
+    fun restoreTimerState(
+        remainingMillis: Long,
+        sessionType: PomodoroSessionType,
+        isRunning: Boolean
+    ) {
+        if (hasRestoredFromNotification) {
+            return
+        }
+
         if (_timerState.value == TimerState.STOPPED && remainingMillis > 0L) {
-            isRestoringFromNotification = true // Set flag to prevent settings from overriding
-            
+            isRestoringFromNotification = true
+            hasRestoredFromNotification = true
+
             _remainingTime.value = remainingMillis
             _currentSessionType.value = sessionType
             _timerState.value = if (isRunning) TimerState.PAUSED else TimerState.STOPPED
-            
+
+            // Fix: Khôi phục sessionStartTime để có thể record session
+            if (sessionStartTime == null) {
+                val sessionDurationMillis = getSessionDurationMillis(sessionType)
+                val elapsedMillis = sessionDurationMillis - remainingMillis
+                sessionStartTime = LocalDateTime.now().minusSeconds(elapsedMillis / 1000)
+                this.sessionDurationMillis = sessionDurationMillis
+            }
+
             countDownTimer?.cancel()
 
             updateNotificationService()
-            
+
             if (isRunning) {
                 startTimer()
             }
-            
+
             // Reset flag after a short delay to allow settings to be processed
             viewModelScope.launch {
                 kotlinx.coroutines.delay(1000) // 1 second delay
@@ -125,7 +144,7 @@ class PomodoroViewModel @Inject constructor(
 
         setupSessionIfNeeded()
         startCountDownTimer()
-        
+
         _timerState.value = TimerState.RUNNING
         isManualSkip = false
         updateNotificationService()
@@ -135,7 +154,7 @@ class PomodoroViewModel @Inject constructor(
         if (_timerState.value == TimerState.STOPPED || _timerState.value == TimerState.FINISHED) {
             sessionStartTime = LocalDateTime.now()
             sessionDurationMillis = getSessionDurationMillis(_currentSessionType.value)
-            
+
             if (_timerState.value == TimerState.FINISHED) {
                 _remainingTime.value = sessionDurationMillis
             }
@@ -186,13 +205,17 @@ class PomodoroViewModel @Inject constructor(
 
         switchToNextSession()
         _timerState.value = TimerState.STOPPED
+//        hasRestoredFromNotification = false
 //        updateNotificationService()
     }
 
     private fun sendCompletionNotificationIntent(finishedSessionType: PomodoroSessionType) {
         val completionIntent = Intent(application, PomodoroNotificationService::class.java).apply {
             action = PomodoroNotificationService.ACTION_SESSION_FINISHED
-            putExtra(PomodoroNotificationService.EXTRA_FINISHED_SESSION_TYPE, finishedSessionType.name)
+            putExtra(
+                PomodoroNotificationService.EXTRA_FINISHED_SESSION_TYPE,
+                finishedSessionType.name
+            )
         }
         application.startService(completionIntent)
     }
@@ -208,10 +231,12 @@ class PomodoroViewModel @Inject constructor(
                     _remainingTime.value = _shortBreakTime.value * 60L * 1000L
                 }
             }
+
             PomodoroSessionType.SHORT_BREAK -> {
                 _currentSessionType.value = PomodoroSessionType.FOCUS
                 _remainingTime.value = _focusTime.value * 60L * 1000L
             }
+
             PomodoroSessionType.LONG_BREAK -> {
                 _currentSessionType.value = PomodoroSessionType.FOCUS
                 _remainingTime.value = _focusTime.value * 60L * 1000L
@@ -227,7 +252,7 @@ class PomodoroViewModel @Inject constructor(
 
     fun resetTimer() {
         countDownTimer?.cancel()
-        
+
         if (shouldRecordSession()) {
             recordSession(completed = false)
         }
@@ -237,6 +262,7 @@ class PomodoroViewModel @Inject constructor(
         isManualSkip = false
         completedFocusSessionCount = 0
         isRestoringFromNotification = false // Reset flag when manually resetting
+        hasRestoredFromNotification = false // Reset để cho phép restore lần sau
         stopNotificationService()
     }
 
@@ -254,7 +280,7 @@ class PomodoroViewModel @Inject constructor(
 
         if (shouldRecordSession()) {
             recordSession(completed = false)
-            
+
             if (_currentSessionType.value == PomodoroSessionType.FOCUS && completedFocusSessionCount > 0) {
                 completedFocusSessionCount--
             }
@@ -271,10 +297,12 @@ class PomodoroViewModel @Inject constructor(
                 _currentSessionType.value = PomodoroSessionType.SHORT_BREAK
                 _remainingTime.value = _shortBreakTime.value * 60L * 1000L
             }
+
             PomodoroSessionType.SHORT_BREAK -> {
                 _currentSessionType.value = PomodoroSessionType.FOCUS
                 _remainingTime.value = _focusTime.value * 60L * 1000L
             }
+
             PomodoroSessionType.LONG_BREAK -> {
                 completedFocusSessionCount = 0
                 _currentSessionType.value = PomodoroSessionType.FOCUS
@@ -299,7 +327,7 @@ class PomodoroViewModel @Inject constructor(
                     type = _currentSessionType.value,
                     completed = completed
                 )
-                
+
                 viewModelScope.launch {
                     recordPomodoroSessionUseCase(session)
                 }
@@ -314,7 +342,10 @@ class PomodoroViewModel @Inject constructor(
         val intent = Intent(application, PomodoroNotificationService::class.java).apply {
             putExtra(PomodoroNotificationService.EXTRA_REMAINING_MILLIS, _remainingTime.value)
             putExtra(PomodoroNotificationService.EXTRA_SESSION_TYPE, _currentSessionType.value.name)
-            putExtra(PomodoroNotificationService.EXTRA_IS_RUNNING, _timerState.value == TimerState.RUNNING)
+            putExtra(
+                PomodoroNotificationService.EXTRA_IS_RUNNING,
+                _timerState.value == TimerState.RUNNING
+            )
         }
         application.startForegroundService(intent)
     }
